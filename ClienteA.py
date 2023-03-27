@@ -3,25 +3,31 @@ import os
 import socket
 import pathlib
 from pathlib import Path
+import zipfile
+from tkinter import Tk
+from tkinter.filedialog import askopenfilenames
 
+Tk().withdraw()
 HOST = 'localhost'  # IP servidor
 PORT = 8001        # Puerto en el que el servidor está escuchando
 
 # Crea dos socket de tipo cliente
-cliente_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-cliente_socket_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 
 # Conéctate al servidor
-cliente_socket.connect((HOST, PORT))
-cliente_socket_2.connect((HOST, 8002))
+
 main_flag = True
 while main_flag:
+    cliente_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    cliente_socket_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    cliente_socket.connect((HOST, PORT))
+    cliente_socket_2.connect((HOST, 8002))
     # Menu para elegir accion
     print("Menu: \n 1. Enviar archivo \n 2. Descargar archivo")
     print(" 3. Borrar archivo \n 4. Borrar carpeta ")
     print(" 5. Crear nueva carpeta \n 6. Crear nuevo archivo ")
-    print(" 7. Renombrar archivo o carpeta ")
-    print(" 8. Salir y cerrar todo ")
+    print(" 7. Renombrar archivo o carpeta\n 8. Envio de multiples archivos ")
+    print(" 9. Salir y cerrar todo ")
     menu = input('')
     cliente_socket.send(menu.encode())
 
@@ -50,6 +56,7 @@ while main_flag:
                 datos = archivo.read(1024)
 
         print('Archivo enviado exitosamente.')
+        cliente_socket.close()
 
     # Descarga de archivos
     elif menu == '2':
@@ -77,6 +84,10 @@ while main_flag:
                     f.write(datos)
 
             print('Archivo recibido exitosamente.')
+            cliente_socket.close()
+            cliente_socket_2.close()
+
+
 
     # Eliminar archivos
     elif menu == '3':
@@ -99,6 +110,8 @@ while main_flag:
         cliente_socket.send(seg.encode())
         respuesta = cliente_socket.recv(1024).decode()
         # print(archivo_seleccionado.encode())
+        cliente_socket.close()
+
 
     # Eliminar carpetas
     elif menu == '4':
@@ -134,6 +147,8 @@ while main_flag:
         # Recibe confirmación de borrado
         answ = cliente_socket.recv(1024).decode()
         print(answ)
+        cliente_socket.close()
+
 
     # Crear carpetas
     elif menu == '5':
@@ -152,6 +167,8 @@ while main_flag:
         cliente_socket.send(ruta_f)
         answ = cliente_socket.recv(1024).decode()
         print(answ)
+        cliente_socket.close()
+
 
     # Crear nuevo archivo
     elif menu == '6':
@@ -170,6 +187,8 @@ while main_flag:
         cliente_socket.send(ruta_f)
         answ = cliente_socket.recv(1024).decode()
         print(answ)
+        cliente_socket.close()
+
 
     # Renombrar archivo o carpeta
     elif menu == '7':
@@ -194,8 +213,26 @@ while main_flag:
         cliente_socket.send(renombre)
         answ = cliente_socket.recv(1024).decode()
         print(answ)
-    elif menu == '8':
-        main_flag = False
+        cliente_socket.close()
 
-# Cierra la conexión y el socket del cliente
-cliente_socket.close()
+    elif menu == '8':
+        file_paths = askopenfilenames()
+        carpeta = input("Ingrese el nombre para la carpeta: ") + ".zip"
+        with zipfile.ZipFile(carpeta, 'w') as myzip:
+            # Agrega cada archivo seleccionado al archivo .zip
+            for path in file_paths:
+                myzip.write(path, os.path.basename(path))
+        print('Archivos comprimidos exitosamente.')
+        cliente_socket.send(carpeta.encode())
+        # Envio del archivo al servidor
+        with open(carpeta, 'rb') as archivo:
+            datos = archivo.read(1024)
+            while datos:
+                cliente_socket.send(datos)
+                datos = archivo.read(1024)
+        print('Archivo enviado exitosamente.')
+        cliente_socket.close()
+
+    elif menu == '9':
+        main_flag = False
+        cliente_socket.close()
