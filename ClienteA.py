@@ -10,7 +10,7 @@ from tkinter.filedialog import askopenfilenames
 Tk().withdraw()
 HOST = 'localhost'  # IP servidor
 PORT = 8001        # Puerto en el que el servidor está escuchando
-
+FILEPATH = "./Cliente"
 # Crea dos socket de tipo cliente
 
 
@@ -27,7 +27,7 @@ while main_flag:
     print(" 3. Borrar archivo \n 4. Borrar carpeta ")
     print(" 5. Crear nueva carpeta \n 6. Crear nuevo archivo ")
     print(" 7. Renombrar archivo o carpeta\n 8. Envio de multiples archivos ")
-    print(" 9. Salir y cerrar todo ")
+    print(" 9. Descarga de multiples archivos \n E. Salir y cerrar todo ")
     menu = input('')
     cliente_socket.send(menu.encode())
 
@@ -234,5 +234,57 @@ while main_flag:
         cliente_socket.close()
 
     elif menu == '9':
+        #print("Archivos disponibles para la descarga: ")
+        #mensajes = cliente_socket_2.recv(1024).decode()
+        #print(mensajes)
+        print("Archivos disponibles para comprimir:")
+        lista_archivos = []
+        tam_lista = cliente_socket_2.recv(1024).decode()
+        print(tam_lista)
+        num_lista=int(tam_lista)
+        print(num_lista)
+        for i in range(num_lista-1):
+            mensajes = cliente_socket_2.recv(1024).decode()
+            print(mensajes)
+
+        while True:
+            sel_archivos = input(
+                "Ingrese el número de un archivo para agregarlo a la lista de archivos a comprimir, o presione 's' para detener la selección: ")
+            if sel_archivos == 's':
+                cliente_socket_2.sendall(sel_archivos.encode())
+                break
+            try:
+                cliente_socket_2.sendall(sel_archivos.encode())
+                mensaje = cliente_socket_2.recv(1024).decode()
+                print(mensaje)
+
+            except:
+                continue
+        nombre_zip = input("ingrese el nombre de la carpeta.")
+        cliente_socket_2.sendall(nombre_zip.encode())
+
+        with open(nombre_zip, 'wb') as f:  # Abrir en modo de escritura
+            # Recibe los datos del archivo en pequeñas partes
+            while True:
+                datos = cliente_socket.recv(1024)
+                if not datos:
+                    break
+                f.write(datos)
+        carpeta = FILEPATH + "/" + nombre_zip
+        with zipfile.ZipFile(file=nombre_zip, mode="r", allowZip64=True) as file:
+            archivo = file.open(name=file.namelist()[0], mode="r")
+            # print(archivo.read())
+            archivo.close()
+
+            # print("descomprimiendo")
+            file.extractall(path=carpeta)
+
+        print('Archivo recibido exitosamente.')
+        cliente_socket.close()
+        cliente_socket_2.close()
+
+
+
+    elif menu == 'E':
         main_flag = False
         cliente_socket.close()
